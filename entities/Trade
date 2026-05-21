@@ -1,0 +1,54 @@
+{
+  "name": "Trade",
+  "type": "object",
+  "properties": {
+    "stock_symbol": {
+      "type": "string",
+      "description": "Stock ticker symbol"
+    },
+    "stock_name": {
+      "type": "string",
+      "description": "Stock name"
+    },
+    "trade_type": {
+      "type": "string",
+      "enum": [
+        "BUY",
+        "SELL"
+      ],
+      "description": "Type of trade"
+    },
+    "quantity": {
+      "type": "number",
+      "description": "Number of shares"
+    },
+    "price": {
+      "type": "number",
+      "description": "Price per share at time of trade"
+    },
+    "total_value": {
+      "type": "number",
+      "description": "Total trade value"
+    },
+    "sector": {
+      "type": "string"
+    },
+    "trade_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of trade"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Optional trade notes"
+    }
+  },
+  "required": [
+    "stock_symbol",
+    "stock_name",
+    "trade_type",
+    "quantity",
+    "price",
+    "total_value"
+  ]
+}

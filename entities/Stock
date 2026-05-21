@@ -1,0 +1,130 @@
+{
+  "name": "Stock",
+  "type": "object",
+  "properties": {
+    "symbol": {
+      "type": "string",
+      "description": "Stock ticker symbol e.g. RELIANCE, TCS"
+    },
+    "name": {
+      "type": "string",
+      "description": "Full company name"
+    },
+    "sector": {
+      "type": "string",
+      "enum": [
+        "IT",
+        "Banking",
+        "Energy",
+        "Pharma",
+        "FMCG",
+        "Auto",
+        "Metals",
+        "Telecom",
+        "Infrastructure",
+        "Financial Services"
+      ],
+      "description": "Industry sector"
+    },
+    "current_price": {
+      "type": "number",
+      "description": "Latest price in INR"
+    },
+    "market_cap": {
+      "type": "string",
+      "enum": [
+        "Large Cap",
+        "Mid Cap",
+        "Small Cap"
+      ],
+      "description": "Market capitalization category"
+    },
+    "pe_ratio": {
+      "type": "number",
+      "description": "Price to earnings ratio"
+    },
+    "dividend_yield": {
+      "type": "number",
+      "description": "Dividend yield percentage"
+    },
+    "week_52_high": {
+      "type": "number"
+    },
+    "week_52_low": {
+      "type": "number"
+    },
+    "ohlcv_data": {
+      "type": "array",
+      "description": "Historical OHLCV data (last 30 days)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "open": {
+            "type": "number"
+          },
+          "high": {
+            "type": "number"
+          },
+          "low": {
+            "type": "number"
+          },
+          "close": {
+            "type": "number"
+          },
+          "volume": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "signal": {
+      "type": "string",
+      "enum": [
+        "STRONG_BUY",
+        "BUY",
+        "HOLD",
+        "SELL",
+        "STRONG_SELL"
+      ],
+      "description": "Current AI signal"
+    },
+    "signal_reasoning": {
+      "type": "string",
+      "description": "Plain English explanation of the signal"
+    },
+    "suitability_conservative": {
+      "type": "number",
+      "description": "Suitability score 0-100 for conservative investors"
+    },
+    "suitability_moderate": {
+      "type": "number",
+      "description": "Suitability score 0-100 for moderate investors"
+    },
+    "suitability_aggressive": {
+      "type": "number",
+      "description": "Suitability score 0-100 for aggressive investors"
+    },
+    "risk_level": {
+      "type": "string",
+      "enum": [
+        "Low",
+        "Medium",
+        "High"
+      ],
+      "description": "Risk classification"
+    },
+    "description": {
+      "type": "string",
+      "description": "Brief company description"
+    }
+  },
+  "required": [
+    "symbol",
+    "name",
+    "sector",
+    "current_price"
+  ]
+}

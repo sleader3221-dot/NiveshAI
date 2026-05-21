@@ -1,0 +1,64 @@
+{
+  "name": "FinancialProfile",
+  "type": "object",
+  "properties": {
+    "monthly_income": {
+      "type": "number",
+      "description": "Monthly income in INR"
+    },
+    "monthly_expenses": {
+      "type": "number",
+      "description": "Monthly expenses in INR"
+    },
+    "total_savings": {
+      "type": "number",
+      "description": "Total current savings in INR"
+    },
+    "investment_goal": {
+      "type": "string",
+      "enum": [
+        "short_term",
+        "medium_term",
+        "long_term"
+      ],
+      "description": "Investment horizon"
+    },
+    "risk_appetite": {
+      "type": "string",
+      "enum": [
+        "conservative",
+        "moderate",
+        "aggressive"
+      ],
+      "description": "Risk tolerance level"
+    },
+    "investable_amount": {
+      "type": "number",
+      "description": "Calculated investable amount"
+    },
+    "investment_experience": {
+      "type": "string",
+      "enum": [
+        "beginner",
+        "intermediate",
+        "experienced"
+      ],
+      "description": "Level of investment experience"
+    },
+    "age": {
+      "type": "number",
+      "description": "Age of the investor"
+    },
+    "onboarding_complete": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "monthly_income",
+    "monthly_expenses",
+    "total_savings",
+    "investment_goal",
+    "risk_appetite"
+  ]
+}

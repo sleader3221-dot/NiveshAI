@@ -1,0 +1,27 @@
+{
+  "name": "Watchlist",
+  "type": "object",
+  "properties": {
+    "stock_symbol": {
+      "type": "string"
+    },
+    "stock_name": {
+      "type": "string"
+    },
+    "added_price": {
+      "type": "number",
+      "description": "Price when added to watchlist"
+    },
+    "target_price": {
+      "type": "number",
+      "description": "Target price set by user"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "stock_symbol",
+    "stock_name"
+  ]
+}
