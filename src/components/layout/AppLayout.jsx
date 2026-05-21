@@ -1,5 +1,3 @@
-const db = globalThis.__B44_DB__ || { auth:{ isAuthenticated: async()=>false, me: async()=>null }, entities:new Proxy({}, { get:()=>({ filter:async()=>[], get:async()=>null, create:async()=>({}), update:async()=>({}), delete:async()=>({}) }) }), integrations:{ Core:{ UploadFile:async()=>({ file_url:'' }) } } };
-
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { 
@@ -23,7 +21,7 @@ const navItems = [
 export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -99,7 +97,7 @@ export default function AppLayout() {
             variant="ghost" 
             size="sm" 
             className="w-full justify-start mt-1.5 text-white/30 hover:text-coral hover:bg-coral/10 text-xs"
-            onClick={() => db.auth.logout()}
+            onClick={() => logout()}
           >
             <LogOut className="w-3.5 h-3.5 mr-2" />
             Sign Out

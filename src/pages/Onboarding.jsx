@@ -1,7 +1,8 @@
-const db = globalThis.__B44_DB__ || { auth:{ isAuthenticated: async()=>false, me: async()=>null }, entities:new Proxy({}, { get:()=>({ filter:async()=>[], get:async()=>null, create:async()=>({}), update:async()=>({}), delete:async()=>({}) }) }), integrations:{ Core:{ UploadFile:async()=>({ file_url:'' }) } } };
+import { db } from '@/lib/dbClient';
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/lib/AuthContext';
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,7 @@ export default function Onboarding() {
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [form, setForm] = useState({
     monthly_income: '',
     monthly_expenses: '',
@@ -52,6 +54,7 @@ export default function Onboarding() {
       age: Number(form.age),
       investable_amount: investable + savingsAllocation,
       onboarding_complete: true,
+      created_by: user?.email || 'anonymous',
     });
     setSaving(false);
     window.location.href = '/';
