@@ -94,18 +94,25 @@ const saveStoredPasswordResets = (items) => {
 };
 
 const createMockToken = (email) => {
-  return `mock-jwt-${btoa(email)}-${Date.now()}`;
+  const payload = {
+    email,
+    iat: Date.now(),
+    exp: Date.now() + 1000 * 60 * 60 * 24,
+  };
+  return `mock-jwt.${btoa(JSON.stringify(payload))}`;
 };
 
 const getMockUserFromToken = (token) => {
-  if (!token || !token.startsWith('mock-jwt-')) return null;
-  const parts = token.split('-');
-  if (parts.length < 3) return null;
+  if (!token || !token.startsWith('mock-jwt.')) return null;
+  const parts = token.split('.');
+  if (parts.length !== 2) return null;
   try {
-    const email = atob(parts[2]);
+    const payload = JSON.parse(atob(parts[1]));
+    if (!payload.email || !payload.exp || Date.now() > payload.exp) return null;
     const users = getStoredMockUsers();
-    return users.find((user) => user.email === email) || null;
-  } catch {
+    return users.find((user) => user.email === payload.email) || null;
+  } catch (err) {
+    console.error('Failed to parse mock JWT:', err);
     return null;
   }
 };

@@ -24,7 +24,7 @@ export default function Recommendations() {
   });
 
   const { data: profiles } = useQuery({
-    queryKey: ['financial-profile'],
+    queryKey: ['financial-profile', user?.email],
     queryFn: () => db.entities.FinancialProfile.filter({ created_by: user?.email }),
     enabled: !!user?.email,
   });

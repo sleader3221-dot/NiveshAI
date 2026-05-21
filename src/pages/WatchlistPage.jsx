@@ -36,8 +36,12 @@ export default function WatchlistPage() {
   const deleteMutation = useMutation({
     mutationFn: (id) => db.entities.Watchlist.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['watchlist'] });
+      queryClient.invalidateQueries({ queryKey: ['watchlist', user?.email] });
       toast.success('Removed from watchlist');
+    },
+    onError: (err) => {
+      console.error('Watchlist delete error:', err);
+      toast.error('Failed to remove from watchlist');
     },
   });
 

@@ -22,25 +22,14 @@ const MARKET_EVENTS = [
   { day: 24, label: "Quarterly Results", desc: "IT sector beats estimates; INFY, TCS post strong numbers", type: "positive" },
 ];
 
-function generateReplayData(stock, numDays = 30) {
-  const base = stock.current_price * 0.92;
-  const data = [];
-  let price = base;
-  for (let i = 0; i < numDays; i++) {
-    const event = MARKET_EVENTS.find(e => e.day === i);
-    const eventImpact = event ? (event.type === 'positive' ? 0.025 : -0.02) : 0;
-    const noise = (Math.random() - 0.47) * 0.018;
-    price = +(price * (1 + noise + eventImpact)).toFixed(2);
-    data.push({
-      day: i + 1,
-      price,
-      date: `Day ${i + 1}`,
-      event: event?.label || null,
-    });
-  }
-  // make sure final price matches current
-  data[data.length - 1].price = stock.current_price;
-  return data;
+function getReplayData(stock) {
+  const data = stock?.ohlcv_data || [];
+  return data.map((row, index) => ({
+    day: index + 1,
+    price: row.close,
+    date: row.date,
+    event: MARKET_EVENTS.find((e) => e.day === index)?.label || null,
+  }));
 }
 
 export default function TimeMachine() {
@@ -73,11 +62,11 @@ export default function TimeMachine() {
 
   useEffect(() => {
     if (selectedStock) {
-      setReplayData(generateReplayData(selectedStock));
+      setReplayData(getReplayData(selectedStock));
       setCurrentDay(0);
       setIsPlaying(false);
     }
-  }, [selectedSymbol, stocks]);
+  }, [selectedStock]);
 
   useEffect(() => {
     if (isPlaying) {

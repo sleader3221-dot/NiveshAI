@@ -14,6 +14,7 @@ import {
   Target, ShieldCheck, Wallet, CheckCircle2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/stockData';
 
 const steps = [
@@ -46,18 +47,24 @@ export default function Onboarding() {
 
   const handleFinish = async () => {
     setSaving(true);
-    await db.entities.FinancialProfile.create({
-      ...form,
-      monthly_income: Number(form.monthly_income),
-      monthly_expenses: Number(form.monthly_expenses),
-      total_savings: Number(form.total_savings),
-      age: Number(form.age),
-      investable_amount: investable + savingsAllocation,
-      onboarding_complete: true,
-      created_by: user?.email || 'anonymous',
-    });
-    setSaving(false);
-    window.location.href = '/';
+    try {
+      await db.entities.FinancialProfile.create({
+        ...form,
+        monthly_income: Number(form.monthly_income),
+        monthly_expenses: Number(form.monthly_expenses),
+        total_savings: Number(form.total_savings),
+        age: Number(form.age),
+        investable_amount: investable + savingsAllocation,
+        onboarding_complete: true,
+        created_by: user?.email || 'anonymous',
+      });
+      setSaving(false);
+      setTimeout(() => navigate('/'), 100);
+    } catch (err) {
+      setSaving(false);
+      console.error('Failed to save onboarding profile:', err);
+      toast.error('Failed to save profile. Please try again.');
+    }
   };
 
   return (

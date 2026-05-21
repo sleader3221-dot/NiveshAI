@@ -18,7 +18,7 @@ export default function Profile() {
   const queryClient = useQueryClient();
 
   const { data: profiles, isLoading } = useQuery({
-    queryKey: ['financial-profile'],
+    queryKey: ['financial-profile', user?.email],
     queryFn: () => db.entities.FinancialProfile.filter({ created_by: user?.email }),
     enabled: !!user?.email,
   });
@@ -43,7 +43,7 @@ export default function Profile() {
   const updateMutation = useMutation({
     mutationFn: (data) => db.entities.FinancialProfile.update(profile.id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['financial-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['financial-profile', user?.email] });
       toast.success('Profile updated!');
     },
   });

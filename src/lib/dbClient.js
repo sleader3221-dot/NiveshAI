@@ -1,4 +1,4 @@
-const STORAGE_PREFIX = 'niveshai_entity_';
+const STORAGE_PREFIX = 'niveshAI_entity_v1_';
 const isBrowser = typeof window !== 'undefined';
 
 const getStorageKey = (entityName) => `${STORAGE_PREFIX}${entityName}`;
@@ -9,7 +9,8 @@ const loadEntityItems = (entityName) => {
   if (!raw) return [];
   try {
     return JSON.parse(raw) || [];
-  } catch {
+  } catch (err) {
+    console.error(`[dbClient] Failed to parse localStorage for ${entityName}:`, err);
     return [];
   }
 };

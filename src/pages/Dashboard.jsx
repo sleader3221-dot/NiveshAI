@@ -23,7 +23,7 @@ export default function Dashboard() {
   const [stocks, setStocks] = useState([]);
 
   const { data: profiles, isLoading: loadingProfile } = useQuery({
-    queryKey: ['financial-profile'],
+    queryKey: ['financial-profile', user?.email],
     queryFn: () => db.entities.FinancialProfile.filter({ created_by: user?.email }),
     enabled: !!user?.email,
   });
@@ -34,7 +34,7 @@ export default function Dashboard() {
   });
 
   const { data: trades, isLoading: loadingTrades } = useQuery({
-    queryKey: ['trades'],
+    queryKey: ['trades', user?.email],
     queryFn: () => db.entities.Trade.filter({ created_by: user?.email }),
     enabled: !!user?.email,
   });

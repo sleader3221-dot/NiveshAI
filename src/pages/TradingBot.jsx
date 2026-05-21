@@ -1,7 +1,8 @@
 import { db } from '@/lib/dbClient';
 
 import React, { useState, useMemo, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 import { useAuth } from '@/lib/AuthContext';
 import { STOCK_SEED_DATA } from '@/lib/stockData';
@@ -44,13 +45,13 @@ export default function TradingBot() {
 
   const { data: dbStocks } = useQuery({ queryKey: ['stocks'], queryFn: () => db.entities.Stock.list() });
   const { data: profile } = useQuery({
-    queryKey: ['financial-profile'],
+    queryKey: ['financial-profile', user?.email],
     queryFn: () => db.entities.FinancialProfile.filter({ created_by: user?.email }),
     enabled: !!user?.email,
     select: data => data?.[0],
   });
   const { data: trades } = useQuery({
-    queryKey: ['trades'],
+    queryKey: ['trades', user?.email],
     queryFn: () => db.entities.Trade.filter({ created_by: user?.email }),
     enabled: !!user?.email,
   });
@@ -59,16 +60,22 @@ export default function TradingBot() {
 
   // Run full scan analysis on all stocks
   const scanResults = useMemo(() => {
+    const profileRiskKey = profile?.risk_appetite || 'moderate';
+    const experienceFactor = profile?.investment_experience === 'beginner' ? 0.45 : profile?.investment_experience === 'intermediate' ? 0.65 : 0.9;
+    const riskFactor = profileRiskKey === 'conservative' ? 0.85 : profileRiskKey === 'aggressive' ? 1.1 : 1.0;
+
     return stocks.map(stock => {
       const ohlcv = stock.ohlcv_data || [];
       const analysis = runSignalConfirmation(ohlcv);
       const mtf = multiTimeframeConfluence(ohlcv);
       const reasoning = generateSignalReasoning({ ...analysis, confluence: mtf.confluence });
 
-      // Kelly sizing
       const capital = profile?.investable_amount || 50000;
-      const kellySize = kellyPositionSize(0.6, 0.08, 0.04, capital);
+      const adjustedCapital = Math.max(10000, capital * experienceFactor);
+      const kellySize = kellyPositionSize(0.6, 0.08, 0.04, adjustedCapital) * riskFactor;
       const suggestedQty = stock.current_price > 0 ? Math.max(1, Math.floor(kellySize / stock.current_price)) : 1;
+      const profileFit = stock[`suitability_${profileRiskKey}`] || 65;
+      const adjustedProfitScore = Math.max(0, analysis.profitScore * (0.7 + (profileFit / 100) * 0.3));
 
       return {
         ...stock,
@@ -79,8 +86,10 @@ export default function TradingBot() {
         suggestedQty,
         botSignal: analysis.signal,
         profitScore: analysis.profitScore,
+        profileFit,
+        adjustedProfitScore,
       };
-    }).sort((a, b) => b.profitScore - a.profitScore);
+    }).sort((a, b) => b.adjustedProfitScore - a.adjustedProfitScore);
   }, [stocks, profile]);
 
   const selectedStock = useMemo(
@@ -103,6 +112,19 @@ export default function TradingBot() {
   }, [scanResults]);
 
   // Portfolio context
+  const queryClient = useQueryClient();
+  const tradeMutation = useMutation({
+    mutationFn: (data) => db.entities.Trade.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['trades', user?.email] });
+      toast.success('Virtual trade executed successfully!');
+    },
+    onError: (err) => {
+      console.error('Trading bot trade error:', err);
+      toast.error('Failed to execute trade');
+    },
+  });
+
   const holdingsMap = useMemo(() => {
     const map = {};
     (trades || []).forEach(t => {
@@ -112,6 +134,53 @@ export default function TradingBot() {
     });
     return map;
   }, [trades]);
+
+  const heldQty = selectedStock ? holdingsMap[selectedStock.symbol]?.qty || 0 : 0;
+  const recommendedAction = selectedStock
+    ? ([Signal.STRONG_BUY, Signal.BUY].includes(selectedStock.botSignal) ? 'BUY'
+      : ([Signal.STRONG_SELL, Signal.SELL].includes(selectedStock.botSignal) ? 'SELL' : 'HOLD'))
+    : 'HOLD';
+  const recommendedQty = recommendedAction === 'BUY'
+    ? selectedStock?.suggestedQty || 1
+    : recommendedAction === 'SELL'
+      ? Math.min(heldQty, selectedStock?.suggestedQty || 1)
+      : 0;
+
+  const handleBotTrade = (tradeType) => {
+    if (!selectedStock || !user?.email) {
+      toast.error('Please log in to execute trades');
+      return;
+    }
+
+    const qty = tradeType === 'SELL'
+      ? Math.max(1, Math.min(heldQty, selectedStock.suggestedQty || 1))
+      : Math.max(1, selectedStock.suggestedQty || 1);
+
+    if (tradeType === 'SELL' && heldQty === 0) {
+      toast.error('No holdings available to sell');
+      return;
+    }
+
+    tradeMutation.mutate({
+      stock_symbol: selectedStock.symbol,
+      stock_name: selectedStock.name,
+      trade_type: tradeType,
+      quantity: qty,
+      price: selectedStock.current_price,
+      total_value: +(selectedStock.current_price * qty).toFixed(2),
+      sector: selectedStock.sector,
+      trade_date: new Date().toISOString().split('T')[0],
+      created_by: user?.email,
+    });
+  };
+
+  const handleRecommendedTrade = () => {
+    if (recommendedAction === 'HOLD') {
+      toast('No strong action recommended for this stock right now.');
+      return;
+    }
+    handleBotTrade(recommendedAction);
+  };
 
   const handleScan = useCallback(() => {
     setIsRunning(true);
@@ -242,6 +311,45 @@ export default function TradingBot() {
         {/* Right: Detail Panel */}
         <div className="space-y-4">
           <BotMarketStateCard stock={selectedStock} />
+          {selectedStock && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Quick Trade</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm text-muted-foreground">
+                    Execute the bot's recommended action for {selectedStock.symbol} at the latest virtual price.
+                  </p>
+                  <Badge variant="secondary" className="text-xs px-2 py-1 uppercase">
+                    {recommendedAction}
+                  </Badge>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Profile fit: {selectedStock.profileFit?.toFixed(0)}% · Suggested position aligned with {profile?.investment_experience || 'beginner'} experience.
+                </div>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <Button
+                    onClick={handleRecommendedTrade}
+                    disabled={tradeMutation.isPending || recommendedAction === 'HOLD' || (recommendedAction === 'SELL' && heldQty === 0)}
+                    className="bg-primary hover:bg-primary/90"
+                  >
+                    Execute {recommendedAction === 'HOLD' ? 'No Action' : `${recommendedAction} ${recommendedQty || ''}`}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleBotTrade('SELL')}
+                    disabled={tradeMutation.isPending || heldQty === 0}
+                  >
+                    Sell {heldQty || 0}
+                  </Button>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Current price: ₹{selectedStock.current_price.toLocaleString('en-IN')}, Suggested size: {selectedStock.suggestedQty || 1} shares.
+                </div>
+              </CardContent>
+            </Card>
+          )}
           {selectedStock && (
             <BotIndicatorPanel stock={selectedStock} />
           )}

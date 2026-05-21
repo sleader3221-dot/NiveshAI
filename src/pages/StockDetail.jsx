@@ -60,10 +60,14 @@ export default function StockDetail() {
   const tradeMutation = useMutation({
     mutationFn: (data) => db.entities.Trade.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['trades'] });
+      queryClient.invalidateQueries({ queryKey: ['trades', user?.email] });
       setTradeDialog(null);
       setTradeQty(1);
       toast.success('Trade executed successfully!');
+    },
+    onError: (err) => {
+      console.error('Trade mutation error:', err);
+      toast.error('Failed to execute trade');
     },
   });
 
@@ -72,8 +76,16 @@ export default function StockDetail() {
       stock_symbol: stock.symbol,
       stock_name: stock.name,
       added_price: stock.current_price,
+      created_by: user?.email,
     }),
-    onSuccess: () => toast.success('Added to watchlist!'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['watchlist', user?.email] });
+      toast.success('Added to watchlist!');
+    },
+    onError: (err) => {
+      console.error('Watchlist create error:', err);
+      toast.error('Failed to add to watchlist');
+    },
   });
 
   const handleTrade = (type) => {
@@ -90,6 +102,7 @@ export default function StockDetail() {
       total_value: +(stock.current_price * tradeQty).toFixed(2),
       sector: stock.sector,
       trade_date: new Date().toISOString().split('T')[0],
+      created_by: user?.email,
     });
   };
 
