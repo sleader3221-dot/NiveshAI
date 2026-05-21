@@ -1,6 +1,3 @@
-// Portfolio Assistant Intent Engine
-// Processes user messages and returns structured, context-aware responses
-
 import { formatCurrency } from '@/lib/stockData';
 
 function calculateHealthScore(holdings, profile) {
@@ -83,7 +80,6 @@ function getDailyTip(context) {
   const watchlist = context.watchlist || [];
   const investable = calculateMonthlyInvestable(profile);
 
-  // Find a stock from watchlist with interesting signal
   const watchStock = watchlist.find(ws => {
     const s = context.stocks?.find(st => st.symbol === ws.symbol);
     return s && (s.signal === 'STRONG_BUY' || s.signal === 'BUY');
@@ -95,22 +91,33 @@ function getDailyTip(context) {
   const tips = [];
 
   if (investable > 0) {
-    tips.push(`You have ~${formatCurrency(investable)} investable this month. Consider investing small amounts regularly.`);
+    tips.push(`You have about **${formatCurrency(investable)}** available to invest this month. That is a good starting point!`);
   } else {
-    tips.push(`Your expenses are close to your income. Focus on building savings before investing.`);
+    tips.push(`Your monthly expenses are close to your income. Focus on building your savings first. Even ₹500 per month can grow over time.`);
   }
 
   if (recStock) {
-    const change = ((recStock.current_price - recStock.week_52_low) / recStock.week_52_low * 100).toFixed(1);
-    tips.push(`${recStock.name} (${recStock.symbol}) is looking attractive with a STRONG BUY signal.`);
+    tips.push(`**${recStock.name} (${recStock.symbol})** has a strong BUY signal right now. It might be worth adding to your watchlist.`);
   }
 
   if (holdings.length > 0) {
     const totalVal = holdings.reduce((sum, h) => sum + h.currentVal, 0);
     const totalInv = holdings.reduce((sum, h) => sum + h.invested, 0);
     const pnl = totalVal - totalInv;
-    if (pnl < -5000) tips.push(`Your portfolio is down ${formatCurrency(pnl)}. Consider reviewing your positions.`);
-    if (pnl > 5000) tips.push(`Your portfolio is up ${formatCurrency(pnl)}! Great job, keep it up.`);
+    if (pnl < -5000) tips.push(`Your portfolio is down by ${formatCurrency(pnl)}. Do not panic — market dips are normal. Review your stocks before making any changes.`);
+    if (pnl > 5000) tips.push(`Your portfolio is up by ${formatCurrency(pnl)}! Great job staying invested.`);
+
+    // Check sector concentration
+    const sectors = {};
+    holdings.forEach(h => { sectors[h.sector] = (sectors[h.sector] || 0) + h.currentVal; });
+    const topSector = Object.entries(sectors).sort((a, b) => b[1] - a[1])[0];
+    if (topSector && topSector[1] / totalVal > 0.5) {
+      tips.push(`You have **${topSector[0]}** making up over 50% of your portfolio. Consider diversifying into other sectors to spread risk.`);
+    }
+  }
+
+  if (holdings.length < 3) {
+    tips.push(`You currently own **${holdings.length} stock(s)**. Most experts suggest holding 5-8 different stocks to spread out risk.`);
   }
 
   return tips.join(' ');
@@ -126,7 +133,7 @@ function getRiskAnalysis(context) {
 
   if (totalVal > 500000) {
     riskScore += 20;
-    factors.push({ text: 'Large portfolio size', type: 'risk' });
+    factors.push({ text: 'Large portfolio size — bigger amounts mean bigger swings', type: 'risk' });
   }
 
   const sectorCounts = {};
@@ -134,24 +141,29 @@ function getRiskAnalysis(context) {
   const maxSector = Object.entries(sectorCounts).sort((a, b) => b[1] - a[1])[0];
   if (maxSector && maxSector[1] / holdings.length > 0.5) {
     riskScore += 25;
-    factors.push({ text: `High exposure to ${maxSector[0]} sector`, type: 'risk' });
+    factors.push({ text: `Too much in ${maxSector[0]} — if that sector dips, you will feel it`, type: 'risk' });
   }
 
   if (profile?.risk_tolerance === 'aggressive') {
     riskScore += 15;
-    factors.push({ text: 'Aggressive risk profile', type: 'risk' });
+    factors.push({ text: 'You chose aggressive investing — higher potential returns, but also higher ups and downs', type: 'risk' });
   }
 
   if (profile?.risk_tolerance === 'conservative') {
     riskScore -= 10;
-    factors.push({ text: 'Conservative risk profile', type: 'good' });
+    factors.push({ text: 'You chose conservative investing — lower risk, steady growth', type: 'good' });
   }
 
   if (holdings.length < 5) {
     riskScore += 10;
-    factors.push({ text: 'Portfolio under-diversified', type: 'risk' });
+    factors.push({ text: `Only ${holdings.length} stocks — spreading across more stocks reduces risk`, type: 'risk' });
   } else {
-    factors.push({ text: 'Good diversification', type: 'good' });
+    factors.push({ text: `Good diversification across ${holdings.length} stocks`, type: 'good' });
+  }
+
+  if (totalVal === 0) {
+    riskScore = 0;
+    factors = [{ text: 'No holdings yet — start with a small investment to get comfortable', type: 'good' }];
   }
 
   riskScore = Math.min(100, Math.max(0, riskScore));
@@ -173,163 +185,314 @@ function parseWhatIf(msg) {
   return null;
 }
 
+// Mock market news
+const MARKET_NEWS = [
+  { headline: "Nifty 50 hits new all-time high — what it means for you", summary: "The index crossed 25,000 for the first time. If you own index funds or large-cap stocks, your portfolio value just increased." },
+  { headline: "RBI keeps interest rates unchanged — good news for home loans", summary: "EMIs on home and car loans will stay the same. Banking stocks may see a boost." },
+  { headline: "IT sector reports strong quarterly growth", summary: "Infosys, TCS, and Wipro beat profit estimates. If you own IT stocks, check your portfolio." },
+  { headline: "Government pushes renewable energy — which stocks to watch", summary: "Solar, wind, and green energy companies may benefit from new policy. Consider adding them to your watchlist." },
+  { headline: "Gold prices rise — should you invest?", summary: "Gold is up 12% this year. It is a good hedge against inflation but remember: gold does not pay dividends like stocks." },
+  { headline: "Foreign investors return to Indian markets", summary: "FIIs bought ₹15,000 crore worth of Indian stocks this month. This signals confidence in India's growth story." },
+  { headline: "Small-cap stocks outperform — but be careful", summary: "Small-cap funds have given 25% returns this year. Higher returns come with higher risk — only invest what you can afford to hold long-term." },
+  { headline: "New tax rules for stock investors — simplified", summary: "Profits from stocks held over 1 year are tax-free up to ₹1.25 lakh. Short-term gains are taxed at 15%. Always consult a CA for your specific situation." },
+];
+
 export function processChatMessage(message, context) {
   const lower = message.toLowerCase().trim();
 
-  // Greeting
-  if (/^(hi|hello|hey|namaste|hola)\b/.test(lower)) {
+  // ---- GREETING ----
+  if (/^(hi|hello|hey|namaste|hola|good\s*(morning|afternoon|evening))/i.test(lower)) {
+    const userName = context.profile?.full_name?.split(' ')[0] || 'there';
+    const hasHoldings = (context.holdings || []).length > 0;
     return {
       type: 'text',
-      content: `Hello! I'm your NiveshAI Portfolio Assistant. I can help you with:\n\n` +
-        `**Investment Advice** — "What should I buy?"\n` +
-        `**Portfolio Analysis** — "How am I doing?"\n` +
-        `**What-If Scenarios** — "What if I buy 10 shares of Reliance?"\n` +
-        `**Risk Score** — "How risky is my portfolio?"\n` +
-        `**Daily Tip** — "Give me a tip"\n\n` +
-        `Type **help** to see all commands.`
+      content: `Hello ${userName}! 👋 I am your NiveshAI Portfolio Assistant.\n\nI can help you understand your investments in simple terms. Here is what you can ask me:\n\n` +
+        `📊 **"Explain my portfolio"** — See a simple summary of what you own\n` +
+        `💡 **"Give me a tip"** — Get a personalized tip for today\n` +
+        `🎯 **"How risky is my portfolio?"** — Understand your risk level\n` +
+        `📈 **"What should I buy?"** — Stock recommendations with simple reasoning\n` +
+        `💰 **"What if I buy 10 shares of Reliance?"** — Simulate a purchase\n` +
+        `📰 **"Market news"** — Latest headlines in simple language\n` +
+        `🧮 **"My 50/30/20"** — See how your budget breaks down\n` +
+        `🏥 **"Portfolio health"** — Check how healthy your investments are\n\n` +
+        (hasHoldings ? `You own **${context.holdings.length} stocks** worth a total of ${formatCurrency(context.holdings.reduce((s, h) => s + h.currentVal, 0))}.` : `You don't own any stocks yet. I can help you find beginner-friendly options!`) +
+        `\n\nType **help** any time to see what I can do.`
     };
   }
 
-  // Help
-  if (/^(help|commands|what can you do)/.test(lower)) {
-    return {
-      type: 'commands'
-    };
+  // ---- HELP ----
+  if (/^(help|commands|what can you do|what do you do)/i.test(lower)) {
+    return { type: 'commands' };
   }
 
-  // Investment Advice
-  if (lower.match(/(what should i (buy|invest)|investment advice|recommend|suggest)/)) {
-    const buyStocks = (context.stocks || [])
-      .filter(s => s.signal === 'STRONG_BUY' || s.signal === 'BUY')
-      .slice(0, 3);
+  // ---- INVESTMENT ADVICE ----
+  if (lower.match(/(what should i (buy|invest)|suggest|recommend|where should i put money|good stock)/)) {
+    const profile = context.profile;
+    const suitableStocks = (context.stocks || [])
+      .filter(s => {
+        if (!profile) return s.signal === 'STRONG_BUY' || s.signal === 'BUY';
+        if (profile.risk_tolerance === 'conservative') return s.suitability_conservative > 70;
+        if (profile.risk_tolerance === 'aggressive') return s.suitability_aggressive > 70;
+        return s.suitability_moderate > 70;
+      })
+      .slice(0, 4);
 
-    if (!buyStocks.length) {
-      return { type: 'text', content: 'No strong buy signals at the moment. Keep watching your watchlist!' };
+    if (!suitableStocks.length) {
+      return { type: 'text', content: 'No strong buy signals at this moment. Keep watching your watchlist — when a stock you like drops, that can be a good entry point!' };
     }
+
+    const riskLabel = profile?.risk_tolerance || 'moderate';
 
     return {
       type: 'recommendations',
-      content: `Based on current signals, here are some stocks to consider:`,
-      stocks: buyStocks.map(s => ({
+      content: `Based on your **${riskLabel}** risk profile, here are some stocks to consider:`,
+      stocks: suitableStocks.map(s => ({
         symbol: s.symbol,
         name: s.name,
         price: s.current_price,
         signal: s.signal,
         reasoning: s.signal_reasoning,
+        suitability: profile?.risk_tolerance === 'conservative' ? s.suitability_conservative :
+                     profile?.risk_tolerance === 'aggressive' ? s.suitability_aggressive : s.suitability_moderate,
       }))
     };
   }
 
-  // What If
+  // ---- WHAT IF ----
   const whatIf = parseWhatIf(message);
   if (whatIf) {
     const result = calculateWhatIf(whatIf.symbol, whatIf.qty, context);
     if (!result) {
-      return { type: 'text', content: `I couldn't find ${whatIf.symbol} in our database.` };
+      return { type: 'text', content: `I could not find **${whatIf.symbol}** in our list of stocks. Please check the symbol and try again (for example: RELIANCE, TCS, INFY).` };
     }
     return {
       type: 'whatif',
-      content: `Here's the impact of buying **${result.buyQty} shares** of **${result.symbol}** at ${formatCurrency(result.buyPrice)}:`,
+      content: `Here is what happens if you buy **${result.buyQty} shares** of **${result.symbol}** at ${formatCurrency(result.buyPrice)} per share:`,
       result
     };
   }
 
-  // Risk Score
-  if (lower.match(/(risk|how risky|risk score|how safe)/)) {
+  // ---- RISK SCORE ----
+  if (lower.match(/(risk|how risky|risk score|how safe|am i too risky|risk level)/)) {
     const analysis = getRiskAnalysis(context);
     return {
       type: 'risk',
-      content: `Your portfolio risk score is **${analysis.score}/100** — **${analysis.level} Risk**.`,
+      content: `Your portfolio risk score is **${analysis.score}/100** — this means **${analysis.level} Risk**.`,
       analysis
     };
   }
 
-  // Portfolio Summary
-  if (lower.match(/(portfolio|what do i own|summary|how am i doing)/)) {
+  // ---- PORTFOLIO SUMMARY ----
+  if (lower.match(/(portfolio|what do i own|summary|how am i doing|my stocks|holdings|overview|what i have)/)) {
     const holdings = context.holdings || [];
     if (!holdings.length) {
-      return { type: 'text', content: 'You don\'t have any holdings yet. Go to **Stocks** and place your first trade!' };
+      return { type: 'text', content: 'You do not own any stocks yet! Head over to **Stocks** to see beginner-friendly options with clear BUY and SELL signals. Start with a small amount to get comfortable.' };
     }
     const totalVal = holdings.reduce((sum, h) => sum + h.currentVal, 0);
     const totalInv = holdings.reduce((sum, h) => sum + h.invested, 0);
     const pnl = totalVal - totalInv;
     const upStocks = holdings.filter(h => h.pnl > 0).length;
     const downStocks = holdings.filter(h => h.pnl < 0).length;
+    const topStock = holdings.sort((a, b) => b.currentVal - a.currentVal)[0];
 
     return {
       type: 'summary',
-      content: `**Portfolio Summary**\n\nYou have **${holdings.length}** holdings worth ${formatCurrency(totalVal)}.\n` +
-        `Total invested: ${formatCurrency(totalInv)}\n` +
-        `P&L: **${pnl >= 0 ? '+' : ''}${formatCurrency(pnl)}** (${pnl >= 0 ? '+' : ''}${((pnl / totalInv) * 100).toFixed(2)}%)\n\n` +
-        `**${upStocks}** stocks are up, **${downStocks}** are down.`,
-      totalVal,
-      totalInv,
-      pnl,
-      upStocks,
-      downStocks,
+      content: `**Your Portfolio Summary**\n\n` +
+        `You own **${holdings.length} stock(s)** worth **${formatCurrency(totalVal)}**.\n` +
+        `You invested **${formatCurrency(totalInv)}** in total.\n` +
+        `Your profit/loss: **${pnl >= 0 ? '+' : ''}${formatCurrency(pnl)}** (${pnl >= 0 ? '+' : ''}${((pnl / totalInv) * 100).toFixed(2)}%)\n\n` +
+        `**${upStocks}** stock(s) are making profit ✅\n` +
+        `**${downStocks}** stock(s) are showing loss 📉\n\n` +
+        `Your biggest holding is **${topStock?.symbol}** worth ${formatCurrency(topStock?.currentVal)}.`,
+      totalVal, totalInv, pnl, upStocks, downStocks, topStock
     };
   }
 
-  // Daily Tip
-  if (lower.match(/(tip|daily|advice|what should i do)/)) {
+  // ---- DAILY TIP ----
+  if (lower.match(/(tip|daily|advice|what should i do|suggestion|help me out)/)) {
     const tip = getDailyTip(context);
-    return { type: 'tip', content: tip };
+    return { type: 'tip', content: tip || 'Complete your financial profile so I can give you personalized tips!' };
   }
 
-  // 50/30/20
-  if (lower.match(/(50.30.20|50 30 20|fifty|rule|budget)/)) {
+  // ---- 50/30/20 RULE ----
+  if (lower.match(/(50.30.20|50 30 20|fifty|rule|budget|how should i split|income split)/)) {
     const profile = context.profile;
     if (!profile) {
-      return { type: 'text', content: 'Please complete your financial profile first to see your 50/30/20 breakdown.' };
+      return { type: 'text', content: 'Please complete your **Financial Profile** first so I can show your 50/30/20 breakdown. Go to your Profile page and fill in your income and expenses.' };
     }
     const income = Number(profile.monthly_income || 0);
     const expenses = Number(profile.monthly_expenses || 0);
-    const needs = expenses;
-    const wants = income * 0.3;
-    const invest = income * 0.2;
+    const needs = Math.min(expenses, income * 0.5);
+    const wants = Math.max(0, income * 0.3);
+    const invest = Math.max(0, income * 0.2);
+    const surplus = income - expenses;
+
     return {
       type: 'fiftyThirtyTwenty',
-      content: 'Here is your 50/30/20 Breakdown:',
-      income,
-      needs,
-      wants,
-      invest,
+      content: `Here is your **50/30/20 Budget Breakdown** based on a monthly income of ${formatCurrency(income)}:`,
+      income, needs, wants, invest, surplus, expenses,
     };
   }
 
-  // Watchlist Signals
-  if (lower.match(/(watchlist|watch)/)) {
+  // ---- WATCHLIST ----
+  if (lower.match(/(watchlist|watch|tracking|stocks i am watching)/)) {
     const watchlist = context.watchlist || [];
     if (!watchlist.length) {
-      return { type: 'text', content: 'Your watchlist is empty. Go to **Stocks** and add stocks to your watchlist.' };
+      return { type: 'text', content: 'Your watchlist is empty. Go to **Stocks** and click the star icon on any stock to add it to your watchlist. This helps you track stocks you are interested in!' };
     }
 
     const detailed = watchlist.map(w => {
       const s = context.stocks?.find(st => st.symbol === w.symbol);
-      return { ...w, signal: s?.signal, reasoning: s?.signal_reasoning };
+      return { ...w, signal: s?.signal, reasoning: s?.signal_reasoning, price: s?.current_price };
     });
 
     return {
       type: 'watchlist',
-      content: `**Watchlist Signals**\n\n`,
+      content: `**Your Watchlist — ${watchlist.length} stock(s)**\n\nHere is how each stock is looking:`,
       stocks: detailed
     };
   }
 
-  // Health Score
-  if (lower.match(/(health|score|how healthy)/)) {
+  // ---- HEALTH SCORE ----
+  if (lower.match(/(health|score|how healthy|portfolio health|health check)/)) {
     const score = calculateHealthScore(context.holdings || [], context.profile);
-    return { type: 'health', content: `Your portfolio health score is **${score}/100**.` };
+    const advice = score >= 80 ? 'Your portfolio is in great shape! Keep monitoring regularly.' :
+                   score >= 50 ? 'Your portfolio is doing OK. Consider diversifying more.' :
+                   'Your portfolio needs attention. Review your holdings and consider rebalancing.';
+
+    return {
+      type: 'health',
+      content: `Your portfolio health score is **${score}/100**. ${advice}`
+    };
   }
 
-  // Fallback
+  // ---- MARKET NEWS ----
+  if (lower.match(/(news|market news|what is happening|latest|headlines|stock market news)/)) {
+    const count = Math.min(MARKET_NEWS.length, 4);
+    const shuffled = [...MARKET_NEWS].sort(() => Math.random() - 0.5).slice(0, count);
+    return {
+      type: 'news',
+      content: `Here are the latest market updates explained in simple terms:\n\n`,
+      news: shuffled
+    };
+  }
+
+  // ---- STOCK DETAIL ----
+  if (lower.match(/(tell me about|details?|info|price of|how is)\s+(\w+)/i)) {
+    const symbolMatch = lower.match(/(?:tell me about|details?|info|price of|how is)\s+(\w+)/i);
+    if (symbolMatch) {
+      const sym = symbolMatch[1].toUpperCase();
+      const stock = context.stocks?.find(s => s.symbol === sym);
+      if (stock) {
+        const change = ((stock.current_price - stock.week_52_low) / stock.week_52_low * 100).toFixed(1);
+        return {
+          type: 'stockDetail',
+          content: `**${stock.name} (${stock.symbol})**`,
+          stock: {
+            ...stock,
+            pctFrom52Low: change,
+          }
+        };
+      }
+    }
+  }
+
+  // ---- COMPARE STOCKS ----
+  if (lower.match(/(compare|vs|versus|which is better)/)) {
+    const matchSymbols = lower.match(/(\w{2,5})\s*(?:vs|versus|and|or|compare)\s*(\w{2,5})/i);
+    if (matchSymbols) {
+      const sym1 = matchSymbols[1].toUpperCase();
+      const sym2 = matchSymbols[2].toUpperCase();
+      const stock1 = context.stocks?.find(s => s.symbol === sym1);
+      const stock2 = context.stocks?.find(s => s.symbol === sym2);
+      if (stock1 && stock2) {
+        return {
+          type: 'comparison',
+          content: `Here is how **${stock1.symbol}** and **${stock2.symbol}** compare:`,
+          stocks: [stock1, stock2]
+        };
+      }
+    }
+  }
+
+  // ---- DIVERSIFICATION ----
+  if (lower.match(/(diversif|spread|too much|concentrat|all eggs|one basket)/)) {
+    const holdings = context.holdings || [];
+    if (!holdings.length) {
+      return { type: 'text', content: 'You do not have any stocks yet. When you start investing, try to buy stocks from different sectors (like IT, banking, energy) to spread your risk. This is called diversification!' };
+    }
+
+    const sectorTotal = {};
+    holdings.forEach(h => {
+      const sector = h.sector || 'Other';
+      sectorTotal[sector] = (sectorTotal[sector] || 0) + h.currentVal;
+    });
+    const totalVal = Object.values(sectorTotal).reduce((a, b) => a + b, 0);
+
+    return {
+      type: 'sectorBreakdown',
+      content: `Here is how your portfolio is spread across different sectors:`,
+      sectors: Object.entries(sectorTotal)
+        .map(([sector, value]) => ({ sector, value, pct: totalVal > 0 ? ((value / totalVal) * 100).toFixed(1) : 0 }))
+        .sort((a, b) => b.value - a.value)
+    };
+  }
+
+  // ---- PORTFOLIO PERFORMANCE ----
+  if (lower.match(/(performance|returns|how did i do|profit|loss|pnl|gains)/)) {
+    const holdings = context.holdings || [];
+    if (!holdings.length) {
+      return { type: 'text', content: 'You have no holdings yet, so no performance to show. Start with a small investment to see how it grows!' };
+    }
+
+    const totalVal = holdings.reduce((s, h) => s + h.currentVal, 0);
+    const totalInv = holdings.reduce((s, h) => s + h.invested, 0);
+    const bestStock = holdings.sort((a, b) => (b.pnl / b.invested * 100) - (a.pnl / a.invested * 100))[0];
+    const worstStock = holdings.sort((a, b) => (a.pnl / a.invested * 100) - (b.pnl / b.invested * 100))[0];
+
+    return {
+      type: 'text',
+      content: `**Your Portfolio Performance**\n\n` +
+        `Total invested: ${formatCurrency(totalInv)}\n` +
+        `Current value: ${formatCurrency(totalVal)}\n` +
+        `Overall P&L: **${totalVal - totalInv >= 0 ? '+' : ''}${formatCurrency(totalVal - totalInv)}** (${((totalVal - totalInv) / totalInv * 100).toFixed(2)}%)\n\n` +
+        `🏆 Best performer: **${bestStock?.symbol}** (${bestStock?.pnlPct.toFixed(2)}%)\n` +
+        `📉 Weakest: **${worstStock?.symbol}** (${worstStock?.pnlPct.toFixed(2)}%)\n\n` +
+        `Your total return is ${totalVal - totalInv >= 0 ? 'positive' : 'negative'}. ` +
+        (totalVal >= totalInv ? 'Keep up the good work!' : 'Remember, short-term losses are normal. Hold quality stocks for the long term.')
+    };
+  }
+
+  // ---- PROFILE/INCOME ----
+  if (lower.match(/(profile|my income|my salary|my details|monthly income|how much i earn|my info)/)) {
+    const profile = context.profile;
+    if (!profile) {
+      return { type: 'text', content: 'You have not filled in your financial profile yet. Go to your **Profile** page to tell us about your income, expenses, and goals — this helps me give you personalized advice!' };
+    }
+    const investable = calculateMonthlyInvestable(profile);
+    const surplus = Number(profile.monthly_income || 0) - Number(profile.monthly_expenses || 0);
+
+    return {
+      type: 'profile',
+      content: `**Your Financial Snapshot**`,
+      profile,
+      investable,
+      surplus,
+    };
+  }
+
+  // ---- FALLBACK ----
   return {
     type: 'text',
-    content: `I'm not sure I understand. Try asking:\n\n` +
-      `- "What should I buy?"\n` +
-      `- "How risky is my portfolio?"\n` +
-      `- "What if I buy 10 shares of Reliance?"\n` +
-      `- "Give me a tip"\n` +
-      `- "Explain my portfolio"`
+    content: `I am not sure I understand that. Here are some things you can ask me:\n\n` +
+      `📊 **"Explain my portfolio"** — Simple summary of what you own\n` +
+      `📰 **"Market news"** — Latest news in simple language\n` +
+      `💡 **"Give me a tip"** — Personalized daily tip\n` +
+      `🎯 **"Am I too risky?"** — Check your risk level\n` +
+      `💰 **"What if I buy 10 shares of Reliance?"** — Simulate a trade\n` +
+      `📈 **"What should I buy?"** — Stock suggestions for beginners\n` +
+      `🧮 **"My 50/30/20"** — Budget breakdown\n` +
+      `🏥 **"Portfolio health"** — Health check\n\n` +
+      `Or try typing something simple like **"What do I own?"**`
   };
 }

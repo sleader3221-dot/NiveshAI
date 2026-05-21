@@ -10,16 +10,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Pause, RotateCcw, Clock, TrendingUp, TrendingDown, Zap, Info, Brain } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { Play, Pause, RotateCcw, Clock, TrendingUp, TrendingDown, Zap, Info, Brain, CheckCircle, XCircle, Target } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, CartesianGrid } from 'recharts';
 
-// Historical market events mapped to day indices (0-29)
 const MARKET_EVENTS = [
-  { day: 3, label: "Budget Rally", desc: "Government announces ₹10L Cr infra capex — markets surge 3.2%", type: "positive" },
-  { day: 8, label: "FII Selloff", desc: "Foreign investors pull ₹8,500 Cr from equities — markets drop 2.1%", type: "negative" },
-  { day: 14, label: "RBI Policy", desc: "RBI holds repo rate, signals accommodative stance — banking stocks rally", type: "positive" },
-  { day: 19, label: "Global Selloff", desc: "US recession fears — Nifty falls 1.8% in a single session", type: "negative" },
-  { day: 24, label: "Quarterly Results", desc: "IT sector beats estimates; INFY, TCS post strong numbers", type: "positive" },
+  { day: 3, label: "Infrastructure Budget", desc: "Government announces ₹10 lakh crore spending plan on roads, railways, and ports — markets surge 3.2%", type: "positive" },
+  { day: 8, label: "Foreign Investors Sell", desc: "Global funds pull out ₹8,500 crore from Indian equities — markets drop 2.1%", type: "negative" },
+  { day: 14, label: "RBI Holds Interest Rate", desc: "Reserve Bank keeps interest rates steady. Banks and home-loan companies rally as investors cheer stable borrowing costs", type: "positive" },
+  { day: 19, label: "Global Selloff Panic", desc: "US recession fears cause worldwide selloff. Nifty falls 1.8% in a single day — a good time for calm investors to buy the dip!", type: "negative" },
+  { day: 24, label: "IT Companies Beat Targets", desc: "Infosys, TCS, and Wipro report stronger-than-expected quarterly results — IT stocks rally", type: "positive" },
 ];
 
 function getReplayData(stock) {
@@ -59,6 +58,7 @@ export default function TimeMachine() {
   }, [dbStocks]);
 
   const selectedStock = stocks.find(s => s.symbol === selectedSymbol);
+  const daysInData = replayData.length;
 
   useEffect(() => {
     if (selectedStock) {
@@ -72,9 +72,9 @@ export default function TimeMachine() {
     if (isPlaying) {
       intervalRef.current = setInterval(() => {
         setCurrentDay(d => {
-          if (d >= 29) {
+          if (d >= daysInData - 1) {
             setIsPlaying(false);
-            return 29;
+            return daysInData - 1;
           }
           return d + 1;
         });
@@ -83,15 +83,24 @@ export default function TimeMachine() {
       clearInterval(intervalRef.current);
     }
     return () => clearInterval(intervalRef.current);
-  }, [isPlaying, speed]);
+  }, [isPlaying, speed, daysInData]);
 
   const visibleData = replayData.slice(0, currentDay + 1);
   const startPrice = replayData[0]?.price || 0;
-  const currentPrice = replayData[currentDay]?.price || 0;
-  const pnlPct = startPrice > 0 ? (((currentPrice - startPrice) / startPrice) * 100).toFixed(2) : 0;
-  const isUp = currentPrice >= startPrice;
+  const endPriceAtCurrent = replayData[currentDay]?.price || 0;
+  const finalPrice = replayData[daysInData - 1]?.price || 0;
+  const pnlPctFromStart = startPrice > 0 ? (((endPriceAtCurrent - startPrice) / startPrice) * 100).toFixed(2) : 0;
+  const finalPnlPct = startPrice > 0 ? (((finalPrice - startPrice) / startPrice) * 100).toFixed(2) : 0;
+  const isUp = endPriceAtCurrent >= startPrice;
 
-  // Portfolio value simulation
+  // Model Accuracy: Compare signal direction against actual movement
+  const signal = selectedStock?.signal || 'HOLD';
+  const signalIsPositive = signal === 'STRONG_BUY' || signal === 'BUY';
+  const signalIsNegative = signal === 'STRONG_SELL' || signal === 'SELL';
+  const actualIsPositive = finalPrice >= startPrice;
+  const modelCorrect = (signalIsPositive && actualIsPositive) || (signalIsNegative && !actualIsPositive);
+  const accuracyPct = signalIsPositive || signalIsNegative ? (modelCorrect ? 100 : 0) : 50;
+
   const holding = (trades || [])
     .filter(t => t.stock_symbol === selectedSymbol)
     .reduce((acc, t) => {
@@ -100,20 +109,32 @@ export default function TimeMachine() {
       return acc;
     }, { qty: 0, invested: 0 });
 
-  const portfolioValue = holding.qty > 0 ? holding.qty * currentPrice : 0;
+  const portfolioValue = holding.qty > 0 ? holding.qty * endPriceAtCurrent : 0;
   const portfolioPnL = portfolioValue - (holding.qty > 0 ? holding.invested : 0);
   const currentEvent = MARKET_EVENTS.find(e => e.day === currentDay);
 
+  // Price change stats
+  const daysUp = visibleData.filter((d, i) => i > 0 && d.price >= replayData[i-1]?.price).length;
+  const daysDown = visibleData.filter((d, i) => i > 0 && d.price < replayData[i-1]?.price).length;
+  const totalDays = Math.max(daysUp + daysDown, 1);
+
   return (
     <div className="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl lg:text-3xl font-dm font-bold flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
-            <Clock className="w-5 h-5 text-blue-600" />
-          </div>
-          Market Time Machine
-        </h1>
-        <p className="text-muted-foreground mt-1">Fast-forward through 30 days of market history. Watch how events impact your portfolio.</p>
+      {/* Header with beginner tip */}
+      <div className="flex items-start justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-2xl lg:text-3xl font-dm font-bold flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Clock className="w-5 h-5 text-primary" />
+            </div>
+            Market Time Machine
+          </h1>
+          <p className="text-muted-foreground mt-1">See how real market events would have affected your stock investments — and check if our AI signals got it right.</p>
+        </div>
+        <div className="bg-accent rounded-xl px-4 py-3 text-sm max-w-xs">
+          <p className="font-semibold text-xs flex items-center gap-1"><Info className="w-3 h-3" /> Beginner Tip</p>
+          <p className="text-xs text-muted-foreground mt-1">Press <strong>Play</strong> to fast-forward through market events. Watch how prices react to news — this is how real markets behave!</p>
+        </div>
       </div>
 
       {/* Stock selector */}
@@ -143,42 +164,47 @@ export default function TimeMachine() {
                 <p className="text-sm text-muted-foreground">{selectedStock?.name}</p>
               </div>
               <div className="text-right">
-                <p className="text-3xl font-dm font-bold">{formatCurrency(currentPrice)}</p>
-                <p className={`text-sm font-semibold ${isUp ? 'text-emerald-600' : 'text-red-500'}`}>
-                  {isUp ? '+' : ''}{pnlPct}% from start
+                <p className="text-3xl font-dm font-bold">{formatCurrency(endPriceAtCurrent)}</p>
+                <p className="text-sm font-semibold flex items-center gap-1 justify-end">
+                  <span className={isUp ? 'text-emerald-600' : 'text-red-500'}>
+                    {isUp ? '▲' : '▼'} {isUp ? '+' : ''}{pnlPctFromStart}%
+                  </span>
+                  <span className="text-muted-foreground text-xs">from day 1</span>
                 </p>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="h-64">
+            <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={visibleData}>
                   <defs>
                     <linearGradient id="priceGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={isUp ? 'hsl(148,58%,28%)' : 'hsl(0,70%,55%)'} stopOpacity={0.3} />
-                      <stop offset="95%" stopColor={isUp ? 'hsl(148,58%,28%)' : 'hsl(0,70%,55%)'} stopOpacity={0} />
+                      <stop offset="5%" stopColor={isUp ? '#10b981' : '#ef4444'} stopOpacity={0.25} />
+                      <stop offset="95%" stopColor={isUp ? '#10b981' : '#ef4444'} stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} domain={['auto', 'auto']} />
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="day" tick={{ fontSize: 10 }} label={{ value: 'Trading Day', position: 'insideBottomRight', offset: -5, style: { fontSize: 10 } }} />
+                  <YAxis tick={{ fontSize: 10 }} domain={['auto', 'auto']} tickFormatter={(v) => `₹${(v/1000).toFixed(0)}K`} />
                   <Tooltip
-                    contentStyle={{ borderRadius: 12, fontSize: 12 }}
+                    contentStyle={{ borderRadius: 12, fontSize: 12, border: '1px solid hsl(var(--border))' }}
                     formatter={(v) => [formatCurrency(v), 'Price']}
+                    labelFormatter={(v) => `Day ${v}`}
                   />
-                  {MARKET_EVENTS.map(e => (
+                  {MARKET_EVENTS.filter(e => e.day <= currentDay).map(e => (
                     <ReferenceLine
                       key={e.day}
-                      x={`Day ${e.day + 1}`}
-                      stroke={e.type === 'positive' ? 'hsl(148,58%,28%)' : 'hsl(0,70%,55%)'}
+                      x={e.day + 1}
+                      stroke={e.type === 'positive' ? '#10b981' : '#ef4444'}
                       strokeDasharray="4 4"
-                      opacity={0.6}
+                      opacity={0.4}
                     />
                   ))}
                   <Area
                     type="monotone"
                     dataKey="price"
-                    stroke={isUp ? 'hsl(148,58%,28%)' : 'hsl(0,70%,55%)'}
+                    stroke={isUp ? '#10b981' : '#ef4444'}
                     fill="url(#priceGrad)"
                     strokeWidth={2.5}
                     animationDuration={100}
@@ -187,16 +213,15 @@ export default function TimeMachine() {
               </ResponsiveContainer>
             </div>
 
-            {/* Timeline slider */}
             <div className="mt-4 px-2">
               <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
                 <span>Day 1</span>
-                <span className="font-medium text-foreground">Day {currentDay + 1} of 30</span>
-                <span>Day 30</span>
+                <span className="font-bold text-foreground">Day {currentDay + 1} of {daysInData}</span>
+                <span>Day {daysInData}</span>
               </div>
               <Slider
                 min={0}
-                max={29}
+                max={daysInData - 1}
                 step={1}
                 value={[currentDay]}
                 onValueChange={([v]) => { setCurrentDay(v); setIsPlaying(false); }}
@@ -204,7 +229,6 @@ export default function TimeMachine() {
               />
             </div>
 
-            {/* Controls */}
             <div className="flex items-center justify-between mt-4 flex-wrap gap-3">
               <div className="flex items-center gap-2">
                 <Button
@@ -217,7 +241,7 @@ export default function TimeMachine() {
                 <Button
                   size="sm"
                   onClick={() => setIsPlaying(p => !p)}
-                  className={isPlaying ? 'bg-amber-500 hover:bg-amber-600' : ''}
+                  className={isPlaying ? 'bg-amber-500 hover:bg-amber-600 border-amber-500' : ''}
                 >
                   {isPlaying ? <Pause className="w-4 h-4 mr-1" /> : <Play className="w-4 h-4 mr-1" />}
                   {isPlaying ? 'Pause' : 'Play'}
@@ -236,12 +260,32 @@ export default function TimeMachine() {
                 ))}
               </div>
             </div>
+
+            {/* Day counter stats */}
+            {currentDay > 0 && (
+              <div className="mt-4 grid grid-cols-3 gap-3 text-center text-xs">
+                <div className="bg-muted rounded-lg p-2">
+                  <p className="text-muted-foreground">Days Up</p>
+                  <p className="text-emerald-600 font-bold text-sm">{daysUp}/{totalDays}</p>
+                </div>
+                <div className="bg-muted rounded-lg p-2">
+                  <p className="text-muted-foreground">Days Down</p>
+                  <p className="text-red-500 font-bold text-sm">{daysDown}/{totalDays}</p>
+                </div>
+                <div className="bg-muted rounded-lg p-2">
+                  <p className="text-muted-foreground">Net Change</p>
+                  <p className={`font-bold text-sm ${isUp ? 'text-emerald-600' : 'text-red-500'}`}>
+                    {isUp ? '+' : ''}{pnlPctFromStart}%
+                  </p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
         {/* Right panel */}
         <div className="space-y-4">
-          {/* Event notification */}
+          {/* Current Event (animated) */}
           <AnimatePresence mode="wait">
             {currentEvent && (
               <motion.div
@@ -266,16 +310,48 @@ export default function TimeMachine() {
             )}
           </AnimatePresence>
 
+          {/* Model Accuracy */}
+          {currentDay === daysInData - 1 && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+              <Card className="border-2 border-amber-200 bg-amber-50">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-dm flex items-center gap-2">
+                    <Target className="w-4 h-4 text-amber-600" /> AI Signal Accuracy
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${modelCorrect ? 'bg-emerald-100' : 'bg-red-100'}`}>
+                      {modelCorrect ? <CheckCircle className="w-5 h-5 text-emerald-600" /> : <XCircle className="w-5 h-5 text-red-500" />}
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold">{modelCorrect ? 'Our AI was RIGHT!' : 'Our AI got it wrong'}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Signal: <strong>{signal.replace('_', ' ')}</strong> | 
+                        Actual: {actualIsPositive ? '📈 Up' : '📉 Down'} {finalPnlPct}%
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    <p>Our model predicted this stock would {signalIsPositive ? 'go up' : signalIsNegative ? 'go down' : 'stay steady'}. 
+                    In reality, it {actualIsPositive ? 'increased' : 'decreased'} by <strong>{finalPnlPct}%</strong> over {daysInData} trading days.</p>
+                    <p className="mt-1 italic">Tip: No model is 100% accurate — that's why diversification matters!</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
           {/* Portfolio impact */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-dm">Your Portfolio Impact</CardTitle>
+              <CardTitle className="text-sm font-dm">Your Holdings in {selectedSymbol}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {holding.qty > 0 ? (
                 <>
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Shares held</span>
+                    <span className="text-muted-foreground">Shares owned</span>
                     <span className="font-semibold">{holding.qty}</span>
                   </div>
                   <div className="flex justify-between text-sm">
@@ -292,17 +368,17 @@ export default function TimeMachine() {
               ) : (
                 <div className="text-center py-4">
                   <p className="text-sm text-muted-foreground">No holdings in {selectedSymbol}</p>
-                  <p className="text-xs text-muted-foreground mt-1">Buy this stock to see portfolio impact</p>
+                  <p className="text-xs text-muted-foreground mt-1">Buy this stock to see how it affects your portfolio over time</p>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Events legend */}
+          {/* Market events timeline */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-dm flex items-center gap-2">
-                <Info className="w-4 h-4" /> Market Events
+                <Info className="w-4 h-4" /> Key Events
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -324,25 +400,25 @@ export default function TimeMachine() {
         </div>
       </div>
 
-      {/* Insight section */}
+      {/* Beginner insight section */}
       <Card className="bg-primary/5 border-primary/10">
         <CardContent className="p-5">
-          <h3 className="font-dm font-semibold mb-2 flex items-center gap-2">
+          <h3 className="font-dm font-semibold mb-3 flex items-center gap-2">
             <Brain className="w-4 h-4 text-primary" />
             What the Time Machine teaches you
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
             <div className="p-3 bg-background rounded-xl border border-border">
-              <p className="font-semibold mb-1">📉 Market Corrections are Normal</p>
-              <p className="text-muted-foreground text-xs">Even strong stocks dip 10-15%. Panic selling at dips destroys wealth.</p>
+              <p className="font-semibold mb-1">📉 Market Dips are Normal</p>
+              <p className="text-muted-foreground text-xs">Even good stocks drop 10-15% occasionally. Selling in panic locks in losses — staying patient pays off.</p>
             </div>
             <div className="p-3 bg-background rounded-xl border border-border">
-              <p className="font-semibold mb-1">⏱ Time in Market &gt; Timing Market</p>
-              <p className="text-muted-foreground text-xs">Staying invested through volatility outperforms trying to time perfect entries.</p>
+              <p className="font-semibold mb-1">⏱ Time Beats Timing</p>
+              <p className="text-muted-foreground text-xs">Investors who stay invested through ups and downs earn more than those trying to buy at the perfect low and sell at the perfect high.</p>
             </div>
             <div className="p-3 bg-background rounded-xl border border-border">
-              <p className="font-semibold mb-1">📊 Events Create Opportunities</p>
-              <p className="text-muted-foreground text-xs">Budget days, policy announcements, and results seasons offer entry points.</p>
+              <p className="font-semibold mb-1">📊 News Moves Markets</p>
+              <p className="text-muted-foreground text-xs">Budgets, RBI decisions, and company results create opportunities. The key is buying quality stocks when others are panicking.</p>
             </div>
           </div>
         </CardContent>

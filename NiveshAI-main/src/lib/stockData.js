@@ -6,23 +6,40 @@ function generateOHLCV(basePrice, days = 30, volatility = 0.02) {
   let price = basePrice;
   const startDate = new Date('2025-04-15');
   
-  for (let i = 0; i < days; i++) {
+  // Create a multi-phase trend for visual interest
+  // Phase 1: initial move, Phase 2: correction/dip, Phase 3: recovery/boom
+  const phases = [
+    { startDay: 0, endDay: days * 0.3, dailyBias: 0.003 },
+    { startDay: days * 0.3, endDay: days * 0.55, dailyBias: -0.004 },
+    { startDay: days * 0.55, endDay: days * 0.75, dailyBias: 0.002 },
+    { startDay: days * 0.75, endDay: days * 0.9, dailyBias: -0.001 },
+    { startDay: days * 0.9, endDay: days, dailyBias: 0.005 },
+  ];
+
+  let idx = 0;
+  for (let i = 0; idx < days; i++) {
     const date = new Date(startDate);
     date.setDate(date.getDate() + i);
     if (date.getDay() === 0 || date.getDay() === 6) continue;
+
+    const phase = phases.find(p => idx >= p.startDay && idx < p.endDay) || phases[phases.length - 1];
     
-    const change = (Math.random() - 0.48) * volatility * price;
-    const open = +(price + (Math.random() - 0.5) * volatility * price * 0.5).toFixed(2);
+    const noise = (Math.random() - 0.5) * volatility * price;
+    const drift = phase.dailyBias * price;
+    const change = drift + noise;
+    
+    const open = +(price + (Math.random() - 0.5) * volatility * price * 0.3).toFixed(2);
     const close = +(price + change).toFixed(2);
-    const high = +(Math.max(open, close) + Math.random() * volatility * price * 0.5).toFixed(2);
-    const low = +(Math.min(open, close) - Math.random() * volatility * price * 0.5).toFixed(2);
-    const volume = Math.floor(1000000 + Math.random() * 10000000);
+    const high = +(Math.max(open, close) + Math.random() * volatility * price * 0.4).toFixed(2);
+    const low = +(Math.min(open, close) - Math.random() * volatility * price * 0.4).toFixed(2);
+    const volume = Math.floor(800000 + Math.random() * 12000000);
     
     data.push({
       date: date.toISOString().split('T')[0],
       open, high, low, close, volume
     });
     price = close;
+    idx++;
   }
   return data;
 }

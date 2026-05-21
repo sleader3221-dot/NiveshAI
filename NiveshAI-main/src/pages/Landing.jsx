@@ -39,48 +39,48 @@ function TickerBar() {
 const features = [
   {
     icon: Brain,
-    title: "8-Signal AI Engine",
-    desc: "RSI, MACD, Bollinger Bands, ADX, Stochastic — 8 indicators voted and weighted for every BUY/SELL signal with plain-English reasoning.",
+    title: "Smart Stock Signals",
+    desc: "Our AI checks 8 different indicators (like RSI, MACD, and trend patterns) to give you clear BUY, HOLD, or SELL signals — with simple explanations in plain English.",
     gradient: "from-cyan/20 to-cyan/5",
     iconColor: "text-cyan",
     glow: "shadow-[0_0_20px_rgba(0,212,255,0.15)]",
   },
   {
     icon: Clock,
-    title: "Market Time Machine",
-    desc: "Travel to Jan 2023, load a portfolio, hit play at 30x speed. Watch your holdings react to the Budget rally and FII selloff in real-time.",
+    title: "Market Simulator",
+    desc: "Rewind and fast-forward through market events. See how budgets, RBI decisions, and global news would have affected your stocks — without risking real money.",
     gradient: "from-violet/20 to-violet/5",
     iconColor: "text-violet",
     glow: "shadow-[0_0_20px_rgba(123,47,255,0.15)]",
   },
   {
     icon: Bot,
-    title: "Elite Trading Bot",
-    desc: "Full 8-signal confirmation system with Kelly Criterion position sizing, regime filter, and multi-timeframe confluence — institutional grade.",
+    title: "Portfolio Assistant",
+    desc: "Chat with our AI assistant to understand your portfolio. Ask 'How risky am I?', 'What should I buy?', or 'What if I buy 10 shares of Reliance?' — get instant, simple answers.",
     gradient: "from-mint/20 to-mint/5",
     iconColor: "text-mint",
     glow: "shadow-[0_0_20px_rgba(46,213,115,0.15)]",
   },
   {
     icon: Target,
-    title: "Personalized Suitability",
-    desc: "Every stock rated 0–100% for YOUR risk profile. Conservative investor? We filter out the high-beta names automatically.",
+    title: "Personalized For You",
+    desc: "Tell us your income, expenses, and how much risk you are comfortable with. We will recommend stocks that match YOUR financial situation — not generic advice.",
     gradient: "from-amber2/20 to-amber2/5",
     iconColor: "text-amber2",
     glow: "shadow-[0_0_20px_rgba(255,165,2,0.15)]",
   },
   {
     icon: BarChart3,
-    title: "Portfolio Health Score",
-    desc: "AI-computed composite score covering diversification, risk alignment, sector concentration, and Nifty 50 benchmark comparison.",
+    title: "Portfolio Health Check",
+    desc: "Get a simple health score out of 100 that shows if your portfolio is well-balanced, too risky, or needs diversification. Clear tips to improve your score.",
     gradient: "from-coral/20 to-coral/5",
     iconColor: "text-coral",
     glow: "shadow-[0_0_20px_rgba(255,71,87,0.15)]",
   },
   {
     icon: Shield,
-    title: "Virtual Trading Sandbox",
-    desc: "₹1,00,000 virtual capital. Real historical prices. Real P&L math. Zero real money at risk. Build conviction first.",
+    title: "Practice Without Risk",
+    desc: "Start with ₹1,00,000 in virtual money. Trade real stocks, track profits and losses, and build confidence — without putting your real savings at risk.",
     gradient: "from-cyan/10 to-violet/10",
     iconColor: "text-primary",
     glow: "shadow-[0_0_20px_rgba(0,212,255,0.1)]",
@@ -88,17 +88,17 @@ const features = [
 ];
 
 const stats = [
-  { value: "20+", label: "NIFTY 50 Stocks", sub: "Real historical prices" },
-  { value: "8", label: "AI Signals", sub: "Multi-indicator confluence" },
-  { value: "2yr", label: "Historical Data", sub: "OHLCV market events" },
-  { value: "100%", label: "Explainable AI", sub: "Every signal justified" },
+  { value: "20+", label: "Indian Stocks", sub: "Real prices and data" },
+  { value: "8", label: "AI Checkpoints", sub: "For every buy/sell signal" },
+  { value: "30", label: "Days of History", sub: "OHLCV data per stock" },
+  { value: "100%", label: "Free to Use", sub: "No real money needed" },
 ];
 
 const steps = [
-  { num: "01", title: "Build Your Profile", desc: "Tell us your income, expenses, goals and risk appetite. Get a personalized investable amount.", color: "border-cyan/40 text-cyan" },
-  { num: "02", title: "Explore AI Signals", desc: "Browse 20+ Nifty stocks with BUY/SELL signals, confidence scores, and plain-English reasoning.", color: "border-violet/40 text-violet" },
-  { num: "03", title: "Trade Virtually", desc: "Execute virtual trades and track real P&L with ₹1L starting capital. No real money involved.", color: "border-mint/40 text-mint" },
-  { num: "04", title: "Time Travel", desc: "Launch the Market Time Machine. Fast-forward through 2 years of market history at 30x speed.", color: "border-amber2/40 text-amber2" },
+  { num: "01", title: "Tell Us About You", desc: "Share your income, expenses, and goals. We calculate how much you can safely invest each month using the 50/30/20 rule.", color: "border-cyan/40 text-cyan" },
+  { num: "02", title: "Explore Stocks With AI", desc: "Browse 20+ Indian stocks with clear BUY, HOLD, or SELL signals. Every recommendation comes with a simple explanation.", color: "border-violet/40 text-violet" },
+  { num: "03", title: "Practice With Virtual Money", desc: "Buy and sell stocks with ₹1,00,000 virtual cash. Track your profits and losses — learn without risking a single rupee.", color: "border-mint/40 text-mint" },
+  { num: "04", title: "Learn From Market History", desc: "Use the Time Machine to see how real market events (budgets, rate changes, global news) would have affected your stocks.", color: "border-amber2/40 text-amber2" },
 ];
 
 export default function Landing() {
@@ -155,14 +155,14 @@ export default function Landing() {
             </div>
 
             <h1 className="text-5xl md:text-7xl font-space font-bold leading-[1.05] tracking-tight">
-              Your Intelligent
+              Start Investing
               <br />
-              <span className="gradient-text-cyan">Investment Companion</span>
+              <span className="gradient-text-cyan">Made Simple</span>
             </h1>
 
             <p className="mt-6 text-lg md:text-xl text-white/50 max-w-2xl mx-auto leading-relaxed font-dm">
-              NIVESH AI gives India's retail investors institutional-grade tools — AI signals, virtual portfolio, 
-              Market Time Machine, and Elite Trading Bot. Zero real money required.
+              NIVESH AI helps beginners understand stock investing with AI-powered signals, 
+              virtual practice trading, and a friendly portfolio assistant. No jargon, no real money required.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10">
@@ -210,7 +210,7 @@ export default function Landing() {
             <h2 className="text-3xl md:text-5xl font-space font-bold">
               Everything to invest <span className="gradient-text-cyan">smarter</span>
             </h2>
-            <p className="text-white/40 mt-4 text-lg">Built specifically for Indian retail investors</p>
+            <p className="text-white/40 mt-4 text-lg">No experience needed — we guide you step by step</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {features.map((f, i) => (
@@ -241,7 +241,7 @@ export default function Landing() {
             <h2 className="text-3xl md:text-5xl font-space font-bold">
               From zero to <span className="gradient-text-cyan">informed investor</span>
             </h2>
-            <p className="text-white/40 mt-4">4 steps. 5 minutes setup. Zero real money.</p>
+            <p className="text-white/40 mt-4">4 simple steps. 5 minutes setup. Zero real money.</p>
           </div>
           <div className="space-y-5">
             {steps.map((step, i) => (
@@ -271,10 +271,10 @@ export default function Landing() {
         <div className="max-w-5xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
             {[
-              { icon: CheckCircle2, text: "8-Signal Confirmation System" },
-              { icon: Activity, text: "Kelly Criterion Position Sizing" },
-              { icon: Brain, text: "Regime Filter (Never Buy in TRENDING_DOWN)" },
-              { icon: Star, text: "Fibonacci Profit Targets" },
+              { icon: CheckCircle2, text: "Clear BUY / SELL Signals" },
+              { icon: Activity, text: "Smart Position Sizing" },
+              { icon: Brain, text: "Beginner-Friendly Explanations" },
+              { icon: Star, text: "Profit Targets For Every Trade" },
             ].map((item, i) => (
               <div key={i} className="flex flex-col items-center gap-2">
                 <item.icon className="w-5 h-5 text-cyan" />
@@ -299,10 +299,10 @@ export default function Landing() {
               <Zap className="w-8 h-8 text-cyan" />
             </div>
             <h2 className="text-3xl md:text-4xl font-space font-bold text-white">
-              Ready to invest smarter?
+              Ready to start learning?
             </h2>
             <p className="mt-4 text-white/45 text-lg max-w-xl mx-auto">
-              Join NIVESH AI and experience institutional-grade analysis built for India's retail investors.
+              Join NIVESH AI and start practicing stock investing today — no experience needed, no real money required. Just curiosity and a willingness to learn.
             </p>
             <Link to="/register" className="mt-8 inline-flex">
               <Button size="lg" className="gap-2 px-10 h-13 text-base font-semibold text-background shadow-[0_0_40px_rgba(0,212,255,0.25)]" style={{ background: 'linear-gradient(135deg, #00D4FF, #7B2FFF)' }}>
@@ -315,7 +315,7 @@ export default function Landing() {
 
       {/* Footer */}
       <footer className="py-8 px-6 border-t border-white/5 text-center text-sm text-white/25">
-        <p>NIVESH AI — Built for Fidelity LEAP 2026 Hackathon | Problem Statement #1 | AI-Powered Stock Portfolio Manager</p>
+        <p>NIVESH AI — Built for Fidelity LEAP 2026 Hackathon | AI-Powered Stock Learning Platform</p>
         <p className="mt-1">Virtual platform for educational purposes only. Not financial advice.</p>
       </footer>
     </div>

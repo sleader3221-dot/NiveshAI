@@ -6,11 +6,11 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
 import { STOCK_SEED_DATA, formatCurrency, getSignalColor } from '@/lib/stockData';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Briefcase, TrendingUp, TrendingDown, ArrowUpRight, History, BarChart3, Clock } from 'lucide-react';
+import { Briefcase, TrendingUp, TrendingDown, ArrowUpRight, History, BarChart3, Clock, Info, Brain } from 'lucide-react';
 import { motion } from 'framer-motion';
 import PortfolioBacktestModal from '@/components/portfolio/PortfolioBacktestModal';
 import PortfolioChatbot from '@/components/chatbot/PortfolioChatbot';
@@ -35,7 +35,6 @@ export default function Portfolio() {
     enabled: !!user?.email,
   });
 
-  // Build holdings
   const holdingsMap = {};
   (trades || []).forEach(t => {
     if (!holdingsMap[t.stock_symbol]) {
@@ -54,7 +53,7 @@ export default function Portfolio() {
   const holdings = Object.entries(holdingsMap)
     .filter(([_, h]) => h.qty > 0)
     .map(([symbol, h]) => {
-      const stock = stocks.find(s => s.symbol === symbol);
+      const stock = stocks.find(s => s.symbol === symbol) || STOCK_SEED_DATA.find(s => s.symbol === symbol);
       const currentVal = (stock?.current_price || 0) * h.qty;
       const pnl = currentVal - h.invested;
       const pnlPct = h.invested > 0 ? (pnl / h.invested) * 100 : 0;
@@ -70,34 +69,59 @@ export default function Portfolio() {
 
   return (
     <div className="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl lg:text-3xl font-dm font-bold">My Portfolio</h1>
-        <p className="text-muted-foreground mt-1">Track your virtual trades and P&L performance</p>
+      {/* Beginner-friendly header */}
+      <div className="flex items-start justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-2xl lg:text-3xl font-dm font-bold">My Portfolio</h1>
+          <p className="text-muted-foreground mt-1">Track your investments and see how your money is growing.</p>
+        </div>
+        {holdings.length > 0 && (
+          <div className="flex items-center gap-2 bg-accent rounded-xl px-4 py-2 text-sm">
+            <Info className="w-4 h-4 text-primary" />
+            <span className="text-muted-foreground">We bought {holdings.length} stock{holdings.length > 1 ? 's' : ''} for you. Click <strong>Backtest</strong> to see if you picked the right time.</span>
+          </div>
+        )}
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total Invested', value: formatCurrency(totalInvested), icon: Briefcase, color: 'text-primary' },
-          { label: 'Current Value', value: formatCurrency(totalCurrentVal), icon: BarChart3, color: 'text-blue-600' },
-          { label: 'Total P&L', value: `${totalPnL >= 0 ? '+' : ''}${formatCurrency(totalPnL)}`, icon: totalPnL >= 0 ? TrendingUp : TrendingDown, color: totalPnL >= 0 ? 'text-emerald-600' : 'text-red-500' },
-          { label: 'Return', value: `${totalPnL >= 0 ? '+' : ''}${totalPnLPct}%`, icon: ArrowUpRight, color: totalPnL >= 0 ? 'text-emerald-600' : 'text-red-500' },
+          { label: 'Total Invested', desc: 'Money you put in', value: formatCurrency(totalInvested), icon: Briefcase },
+          { label: 'Current Value', desc: 'What it is worth now', value: formatCurrency(totalCurrentVal), icon: BarChart3 },
+          { label: 'Total P&L', desc: 'Profit or loss', value: `${totalPnL >= 0 ? '+' : ''}${formatCurrency(totalPnL)}`, icon: totalPnL >= 0 ? TrendingUp : TrendingDown },
+          { label: 'Return', desc: 'Percent change', value: `${totalPnL >= 0 ? '+' : ''}${totalPnLPct}%`, icon: ArrowUpRight },
         ].map((stat, i) => (
           <motion.div key={stat.label} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
             <Card className="p-5">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">{stat.label}</p>
-              <div className="flex items-center gap-2 mt-2">
-                <stat.icon className={`w-5 h-5 ${stat.color}`} />
-                <p className={`text-xl font-dm font-bold ${stat.color}`}>{stat.value}</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">{stat.label}</p>
+              <p className="text-[10px] text-muted-foreground/70 mb-2">{stat.desc}</p>
+              <div className="flex items-center gap-2 mt-1">
+                <stat.icon className={`w-5 h-5 ${stat.label === 'Total P&L' && totalPnL >= 0 ? 'text-emerald-600' : stat.label === 'Total P&L' && totalPnL < 0 ? 'text-red-500' : 'text-primary'}`} />
+                <p className={`text-xl font-dm font-bold ${stat.label === 'Total P&L' && totalPnL >= 0 ? 'text-emerald-600' : stat.label === 'Total P&L' && totalPnL < 0 ? 'text-red-500' : 'text-foreground'}`}>{stat.value}</p>
               </div>
             </Card>
           </motion.div>
         ))}
       </div>
 
+      {/* Beginner Tip Card */}
+      {holdings.length > 0 && (
+        <Card className="bg-primary/5 border-primary/10">
+          <CardContent className="p-4 flex items-start gap-3">
+            <Brain className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+            <div className="text-sm">
+              <p className="font-semibold mb-1">Understanding your Portfolio</p>
+              <p className="text-muted-foreground text-xs">
+                <strong>P&amp;L</strong> (Profit and Loss) compares what your stocks are worth now against what you paid. Green means profit, red means loss. Use the <strong>Backtest</strong> button on each stock to see how different entry dates would have changed your returns.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Tabs defaultValue="holdings" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="holdings">Holdings ({holdings.length})</TabsTrigger>
+          <TabsTrigger value="holdings">My Holdings ({holdings.length})</TabsTrigger>
           <TabsTrigger value="history">Trade History</TabsTrigger>
         </TabsList>
 
@@ -107,7 +131,7 @@ export default function Portfolio() {
               <CardContent className="p-12 text-center">
                 <Briefcase className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="font-semibold text-lg">No Holdings Yet</h3>
-                <p className="text-muted-foreground mt-1">Browse stocks and place your first virtual trade</p>
+                <p className="text-muted-foreground mt-1 max-w-md mx-auto text-sm">You don't own any stocks yet. Browse our beginner-friendly stock signals and try your first virtual trade — no real money needed!</p>
                 <Link to="/stocks">
                   <motion.button whileHover={{ scale: 1.02 }} className="mt-4 px-6 py-2.5 bg-primary text-primary-foreground rounded-lg font-medium text-sm">
                     Explore Stocks
@@ -134,7 +158,7 @@ export default function Portfolio() {
                   </TableHeader>
                   <TableBody>
                     {holdings.map(h => (
-                      <TableRow key={h.symbol} className="cursor-pointer hover:bg-accent/50">
+                      <TableRow key={h.symbol} className="hover:bg-accent/50">
                         <TableCell>
                           <Link to={`/stock/${h.symbol}`} className="hover:underline">
                             <p className="font-semibold">{h.symbol}</p>
@@ -161,11 +185,17 @@ export default function Portfolio() {
                           <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
-                            onClick={() => {
-                              const fullStock = stocks.find(s => s.symbol === h.symbol);
-                              setBacktestStock(fullStock);
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              // Look up stock from both db stocks and seed data
+                              const found = stocks.find(s => s.symbol === h.symbol)
+                                || STOCK_SEED_DATA.find(s => s.symbol === h.symbol);
+                              if (found) {
+                                setBacktestStock(found);
+                              }
                             }}
-                            className="px-2.5 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-xs flex items-center gap-1"
+                            className="px-2.5 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-xs flex items-center gap-1 cursor-pointer"
                           >
                             <Clock className="w-3 h-3" /> Backtest
                           </motion.button>
@@ -202,7 +232,7 @@ export default function Portfolio() {
                         <p className="text-xs text-muted-foreground">{t.stock_name}</p>
                       </TableCell>
                       <TableCell>
-                        <Badge className={t.trade_type === 'BUY' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-red-50 text-red-600 border-red-200'}>
+                        <Badge className={t.trade_type === 'BUY' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-red-100 text-red-700 border-red-200'}>
                           {t.trade_type}
                         </Badge>
                       </TableCell>
